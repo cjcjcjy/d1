@@ -18,12 +18,17 @@ from gsm8k import GSM8KDataset
 from math500 import MATH500Dataset
 from countdown import CTDDataset
 from sudoku import SudokuDataset
+from human_eval import HumanEvalDataset
+from mbpp import MBPPDataset
+
 
 DATASET_MAP = {
     "gsm8k": GSM8KDataset,
     "math": MATH500Dataset,
     "countdown": CTDDataset,
     "sudoku": SudokuDataset,
+    "humaneval": HumanEvalDataset,
+    "mbpp": MBPPDataset,
 }
 
 
@@ -179,7 +184,10 @@ if __name__ == "__main__":
     parser.add_argument("--few_shot", type=int, default=0)
     parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument(
-        "--dataset", type=str, choices=["gsm8k", "math", "countdown", "sudoku", "game24"], default="gsm8k"
+        "--dataset",
+        type=str,
+        choices=["gsm8k", "math", "countdown", "sudoku", "game24", "humaneval", "mbpp"],
+        default="gsm8k",
     )
     parser.add_argument("--suffix", type=str, default="")
     parser.add_argument("--checkpoint_path", type=str, default="")
@@ -193,7 +201,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     args.diffusion_steps = args.gen_length // 2
-    num_evals = {"gsm8k": -1, "math": -1, "countdown": 256, "sudoku": 256}
+    num_evals = {"gsm8k": -1, "math": -1, "countdown": 256, "sudoku": 256, "humaneval": -1, "mbpp": -1}
 
     model = AutoModel.from_pretrained(args.model_path, trust_remote_code=True, torch_dtype=torch.bfloat16).to(
         local_rank

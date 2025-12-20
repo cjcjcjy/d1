@@ -3,6 +3,7 @@ import wandb
 from transformers import AutoTokenizer, AutoModel, BitsAndBytesConfig
 from trl import TrlParser, ModelConfig
 from peft import LoraConfig
+import warnings
 
 # Custom imports
 from diffu_grpo_trainer import DiffuGRPOTrainer
@@ -18,6 +19,7 @@ from reward_func import (
     sudoku_reward_func,
     boxed_and_answer_tags_format_reward,
     reward_len,
+    coding_reward_func,
 )
 from data_utils import (
     get_gsm8k_questions,
@@ -25,6 +27,7 @@ from data_utils import (
     get_sudoku_questions,
     set_random_seed,
     get_math_questions,
+    get_code_questions,
 )
 
 
@@ -56,6 +59,9 @@ def main(grpo_config, model_config):
             boxed_and_answer_tags_format_reward,
         ]
 
+    elif grpo_config.dataset == "code":
+        dataset = get_code_questions()
+        reward_functions = [xmlcount_reward_func, coding_reward_func]
     # Shuffle dataset with fixed seed for reproducibility
     dataset = dataset.shuffle(seed=grpo_config.seed)
 
@@ -104,6 +110,11 @@ def main(grpo_config, model_config):
         reward_funcs=reward_functions,
         train_dataset=train_set,
     )
+
+    if grpo_config.save_steps % grpo_config.num_iterations != 0:
+        warnings.warn(
+            f"save_steps ({grpo_config.save_steps}) is not divisible by num_iterations ({grpo_config.num_iterations}). If resuming training from a checkpoint, you might need to manually specify the checkpoint where the training step is divisible by {grpo_config.num_iterations}."
+        )
 
     trainer.train()
 

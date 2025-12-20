@@ -22,6 +22,7 @@ from trl.trainer.utils import (
     selective_log_softmax,
 )
 import wandb
+import os
 
 if is_peft_available():
     from peft import PeftConfig, get_peft_model
@@ -505,6 +506,8 @@ class DiffuGRPOTrainer(GRPOTrainer):
                 # Repeat all input columns (but "prompt" and "completion") to match the number of generations
                 keys = [key for key in inputs[0] if key not in ["prompt", "completion"]]
                 reward_kwargs = {key: [example[key] for example in inputs] for key in keys}
+                if reward_func_name == "coding_reward_func":
+                    reward_kwargs["cwd_path"] = os.path.join(self.args.output_dir, "execution_files")
                 output_reward_func = reward_func(
                     prompts=prompts,
                     completions=completions,
