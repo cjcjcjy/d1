@@ -26,7 +26,7 @@ def parse_args():
 
     # Hyperparameters
     parser.add_argument(
-        "--model_name", type=str, default="GSAI-ML/LLaDA-8B-Instruct", help="Name of the pretrained model"
+        "--model_name", type=str, default="../models/GSAI-ML/LLaDA-8B-Instruct", help="Name of the pretrained model"
     )
     parser.add_argument("--batch_size", type=int, default=1, help="Batch size for training")
     parser.add_argument(
