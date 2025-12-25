@@ -7,6 +7,9 @@ from tqdm import tqdm
 import pickle
 import torch.distributed as dist
 
+import os
+os.environ["NCCL_P2P_DISABLE"] = "1"
+
 
 class dLLMTrainer(Trainer):
     def compute_loss(self, model, inputs, num_items_in_batch=None, return_outputs=False):

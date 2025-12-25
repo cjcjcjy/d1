@@ -5,6 +5,7 @@ from datasets import load_dataset
 from torch.utils.data import DataLoader
 from peft import LoraConfig, get_peft_model, TaskType
 import os
+os.environ["NCCL_P2P_DISABLE"] = "1"
 from sft_trainer import *
 import torch.distributed as dist
 import random
@@ -26,7 +27,7 @@ def parse_args():
 
     # Hyperparameters
     parser.add_argument(
-        "--model_name", type=str, default="../models/GSAI-ML/LLaDA-8B-Instruct", help="Name of the pretrained model"
+        "--model_name", type=str, default="/home/jcyang/models/GSAI-ML/LLaDA-8B-Instruct", help="Name of the pretrained model"
     )
     parser.add_argument("--batch_size", type=int, default=1, help="Batch size for training")
     parser.add_argument(
@@ -38,7 +39,7 @@ def parse_args():
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="/data0/devaansh",
+        default="./data0/devaansh",
         help="Directory to save model checkpoints and logs",
     )
     parser.add_argument("--job_name", type=str, default="llada-s1", help="Job Name")
@@ -83,7 +84,24 @@ def load_model_and_tokenizer(args):
 
 # Dataset loading
 def load_data(args, tokenizer):
-    data = load_dataset(args.train_data, split="train")
+    # 本地缓存路径
+    local_cache_dir = "./data"
+    dataset_name = args.train_data.replace("/", "_")
+    local_parquet_path = os.path.join(local_cache_dir, f"{dataset_name}.parquet")
+
+    os.makedirs(local_cache_dir, exist_ok=True)
+
+    if os.path.exists(local_parquet_path):
+        # 从本地 Parquet 加载
+        print(f"Loading dataset from local cache: {local_parquet_path}")
+        data = load_dataset("parquet", data_files=local_parquet_path, split="train")
+    else:
+        # 首次加载，从远程下载并保存为 Parquet
+        print(f"Downloading dataset from {args.train_data}...")
+        data = load_dataset(args.train_data, split="train", cache_dir=local_cache_dir)
+        print(f"Saving dataset to local cache: {local_parquet_path}")
+        data.to_parquet(local_parquet_path)
+
     train_data, eval_data = preprocess_dataset(data, tokenizer, args.max_length)
     print("Train data length: ", len(train_data))
     print("Eval data length: ", len(eval_data))
@@ -123,6 +141,7 @@ def train_model(args, tokenizer, model):
         * args.num_epochs
         / (args.batch_size * args.grad_accum_steps * torch.cuda.device_count())
     )
+    print("Total training steps: ", num_train_steps)
     # Initialize Trainer with custom dLLMTrainer
     trainer = dLLMTrainer(
         model=model,
